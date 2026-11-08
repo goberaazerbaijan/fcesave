@@ -1,0 +1,13 @@
+
+---
+
+### 🚫 5. `.gitignore`
+
+```text
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.log
+.env
