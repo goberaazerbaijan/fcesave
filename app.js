@@ -657,6 +657,7 @@ function continueToNext(){
 
 function normalizeAnswer(t){ return t?t.trim().toUpperCase().replace(/\s+/g,' '):''; }
 
+// ✅ DÜZƏLDİLMİŞ: earnedPoints düzgün hesablanır
 function showFinalResults(){
   const exam = EXAMS[currentExamId];
   const points = loadPoints()[currentExamId]||{};
@@ -679,6 +680,7 @@ function showFinalResults(){
       review.push({part:pid,num:it.num,userAns:answers[it.num]||'—',correct,answer:it.answer,points:pt,earned:correct?pt:0,given:it.given,personName:pid==='part7'?m.people[it.answer]?.name:null,explanation:it.explanation});
     });
     breakdown.push({label:`Part ${m.moduleNum}`,score:pCorrect,total:items.length,points:pEarned,maxPoints:items.reduce((s,it)=>s+(points[pid]?.[it.num]??1),0)});
+    earnedPoints += pEarned; // ✅ Hər partın balı ümumi bala əlavə olunur
   });
 
   const pct = totalPoints>0?Math.round((earnedPoints/totalPoints)*100):0;
@@ -720,23 +722,18 @@ function showFinalResults(){
   stopTimer();
 }
 
-// ✅ DÜZƏLDİLMİŞ: Nəticə vərəqində bal düzgün göstərilir
 function showCarnet(){
-  // Marker dəyişikliyi üçün təzə məlumatı localStorage-dan oxu
   refreshCurrentUser();
-  
   document.getElementById('resultsScreen').classList.remove('show');
   document.getElementById('examPage').classList.add('hidden');
   document.getElementById('carnetPage').classList.remove('hidden');
   hideExamNavButtons();
   
-  // Əgər currentExamId-də nəticə yoxdursa, son nəticəni göstər
   let examId = currentExamId;
   if(!examId || !currentUser.scores?.[examId]){
     const scoreKeys = Object.keys(currentUser.scores || {});
     if(scoreKeys.length > 0) examId = scoreKeys[scoreKeys.length - 1];
   }
-  
   if(!examId){ alert('Nəticə tapılmadı!'); backToExams(); return; }
   currentExamId = examId;
   
@@ -746,10 +743,8 @@ function showCarnet(){
   const date = new Date(score.date).toLocaleString('az-AZ');
   
   let html = `<div class="carnet-card"><div class="carnet-header"><div class="school">CAMBRIDGE FCE PLATFORM</div><h1>📜 NƏTİCƏ VƏRƏQİ</h1><div style="font-size:14px;color:#6b7280;margin-top:6px">${exam.title}</div></div><div class="carnet-student"><div><strong>Ad Soyad:</strong> ${currentUser.name}</div><div><strong>Email:</strong> ${currentUser.email}</div><div><strong>Tarix:</strong> ${date}</div></div><div class="carnet-total"><div class="total-label">Nəticə</div><div class="grade-badge grade-${score.grade}" style="font-size:24px">${score.points}/${score.maxPoints} (${score.percent}%)</div></div><table class="carnet-table"><thead><tr><th>Part</th><th>Sual</th><th>Cavab</th><th>Düzgün</th><th>Bal</th></tr></thead><tbody>`;
-  
   score.review.forEach(r=>{ const m = MODULES[r.part]; html += `<tr class="${r.correct?'correct-row':'incorrect-row'}"><td>Part ${m.moduleNum}</td><td>${r.num}</td><td>${r.userAns||'—'}</td><td>${r.answer}</td><td><strong>${r.earned}/${r.points}</strong></td></tr>`; });
   html += `</tbody></table></div><div class="carnet-actions"><button class="btn-restart" onclick="backToExams()" onkeypress="if(event.key==='Enter')backToExams()">🏠 İmtahanlara Qayıt</button><button class="btn-carnet" onclick="window.print()" onkeypress="if(event.key==='Enter')window.print()">🖨️ Çap et</button></div>`;
-  
   document.getElementById('carnetPage').innerHTML = html;
 }
 
@@ -775,7 +770,6 @@ function showAdmin(){
   document.getElementById('adminPage').classList.remove('hidden');
   hideExamNavButtons();
   renderAdminUsers(); renderAdminExams(); renderPointsExamSelect(); renderStudentResultsList(); renderMarkersList(); renderMarkerUserSelect();
-  
   const pdfInput = document.getElementById('pdfUpload');
   if(pdfInput) pdfInput.addEventListener('change', handlePDFUpload);
 }
@@ -792,7 +786,6 @@ function switchAdminTab(tab){
   if(tab==='markers') { renderMarkersList(); renderMarkerUserSelect(); }
 }
 
-// PDF Upload Functions
 function renderPDFUpload(){
   document.getElementById('uploadStatus').textContent = 'PDF faylını seçin və yükləyin. Sistem avtomatik olaraq imtahan yaradacaq.';
 }
@@ -800,39 +793,34 @@ function renderPDFUpload(){
 async function handlePDFUpload(event){
   const file = event.target.files[0];
   if(!file) return;
-  
   const statusEl = document.getElementById('uploadStatus');
   statusEl.textContent = 'PDF oxunur...';
-  
   try {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
     let fullText = '';
-    
     for(let i=1; i<=pdf.numPages; i++){
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
       const pageText = textContent.items.map(item => item.str).join(' ');
       fullText += pageText + '\n';
     }
-    
     statusEl.textContent = 'PDF uğurla oxundu. İmtahan strukturu yaradılır...';
     parsePDFAndCreateExam(fullText);
   } catch(err){
     console.error(err);
-    statusEl.textContent = 'Xəta: PDF oxuna bilmədi. Zəhmət olmasa faylın düzgün olduğuna əmin olun.';
+    statusEl.textContent = 'Xəta: PDF oxuna bilmədi.';
   }
 }
 
 function parsePDFAndCreateExam(text){
-  alert('PDF oxundu. İmtahanın strukturu aşağıdakı kimidir:\n\n' + text.substring(0,500) + '...\n\n(Qeyd: Tam avtomatik PDF parser üçün əlavə kod lazımdır. İndilik əl ilə düzəliş edə bilərsiniz.)');
+  alert('PDF oxundu. İmtahanın strukturu aşağıdakı kimidir:\n\n' + text.substring(0,500) + '...\n\n(Qeyd: Tam avtomatik PDF parser üçün əlavə kod lazımdır.)');
 }
 
 function renderAdminUsers(){
   const tbody = document.getElementById('usersTableBody');
   const users = loadUsers();
   tbody.innerHTML = '';
-  
   users.forEach(u => {
     const scores = u.scores || {};
     const examIds = Object.keys(scores);
@@ -840,18 +828,19 @@ function renderAdminUsers(){
     const totalEarned = examIds.reduce((sum, eid) => sum + (scores[eid].points || 0), 0);
     const totalMax = examIds.reduce((sum, eid) => sum + (scores[eid].maxPoints || 0), 0);
     const balText = completed > 0 ? `${totalEarned}/${totalMax}` : '—';
-    
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${u.name}</td><td>${u.email}</td><td><span class="user-role ${u.role==='admin'?'role-admin':u.role==='marker'?'role-marker':'role-student'}">${u.role}</span></td><td>${completed} imtahan</td><td><strong style="color:#1a1a2e">${balText}</strong></td><td>${u.role!=='admin'?`<button class="btn-sm btn-view" onclick="viewUserAnswers('${u.email}')">Cavablar</button><button class="btn-sm btn-del" onclick="deleteUser('${u.email}')">Sil</button>`:''}</td>`;
     tbody.appendChild(tr);
   });
 }
+
 function deleteUser(email){
   if(email==='admin@fce.com'){ alert('Admin silinə bilməz!'); return; }
   if(!confirm('Bu istifadəçini silmək istədiyinizə əminsiniz?')) return;
   saveUsers(loadUsers().filter(u=>u.email!==email));
   renderAdminUsers();
 }
+
 function viewUserAnswers(email){
   const user = loadUsers().find(u=>u.email===email);
   if(!user) return;
@@ -874,6 +863,7 @@ function viewUserAnswers(email){
   const w = window.open('','_blank','width=700,height=600');
   w.document.write(`<html><head><title>${user.name} — Cavablar</title><style>body{font-family:Inter,sans-serif;padding:0;background:#f0f0eb}</style></head><body>${html}</body></html>`);
 }
+
 function renderAdminExams(){
   const tbody = document.getElementById('examsTableBody');
   tbody.innerHTML = '';
@@ -884,12 +874,14 @@ function renderAdminExams(){
     tbody.appendChild(tr);
   });
 }
+
 function renderPointsExamSelect(){
   const sel = document.getElementById('pointsExamSelect');
   sel.innerHTML = '';
   Object.values(EXAMS).forEach(exam=>{ sel.innerHTML += `<option value="${exam.id}">${exam.title}</option>`; });
   renderPointsEditor();
 }
+
 function renderPointsEditor(){
   const examId = document.getElementById('pointsExamSelect').value;
   const exam = EXAMS[examId];
@@ -910,6 +902,7 @@ function renderPointsEditor(){
   });
   container.innerHTML = html;
 }
+
 function savePointsForPart(examId,pid){
   const inputs = document.querySelectorAll(`.points-input[data-pid="${pid}"]`);
   let points = loadPoints();
@@ -928,26 +921,19 @@ function renderStudentResultsList(){
   const container = document.getElementById('studentResultsList');
   const allUsers = loadUsers();
   const students = allUsers.filter(u => u.role === 'student');
-  
-  if(students.length === 0){
-    container.innerHTML = '<div class="no-data">Heç bir şagird yoxdur</div>';
-    return;
-  }
-  
+  if(students.length === 0){ container.innerHTML = '<div class="no-data">Heç bir şagird yoxdur</div>'; return; }
   let html = '<div style="display:grid;gap:16px">';
   students.forEach(user => {
     const scores = user.scores || {};
     const examIds = Object.keys(scores);
     const totalPoints = examIds.reduce((sum, eid) => sum + (scores[eid].points || 0), 0);
     const maxPoints = examIds.reduce((sum, eid) => sum + (scores[eid].maxPoints || 0), 0);
-    
     html += `<div style="background:#f9fafb;padding:16px;border-radius:10px;border-left:4px solid #2563eb">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <strong style="font-size:16px">${user.name}</strong>
         <span style="font-size:13px;color:#666">${user.email}</span>
       </div>
       <div style="font-size:13px;color:#666;margin-bottom:8px">Tamamlanan imtahan: ${examIds.length} • Ümumi bal: <strong style="color:#1a1a2e">${totalPoints}/${maxPoints}</strong></div>`;
-    
     if(examIds.length > 0){
       html += `<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">`;
       examIds.forEach(eid => {
@@ -959,7 +945,6 @@ function renderStudentResultsList(){
     } else {
       html += `<div style="margin-top:10px;font-size:13px;color:#9ca3af;font-style:italic">Hələ nəticə yoxdur</div>`;
     }
-    
     html += `</div>`;
   });
   html += '</div>';
@@ -984,19 +969,16 @@ function viewCarnetFromAdmin(email, examId){
         <h1 style="font-family:Merriweather,serif;color:#1a1a2e">📜 NƏTİCƏ VƏRƏQİ</h1>
         <div style="font-size:14px;color:#6b7280;margin-top:6px">${exam.title}</div>
       </div>
-      
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;padding:16px;background:#f9fafb;border-radius:10px">
         <div><strong>Ad:</strong> ${user.name}</div>
         <div><strong>Email:</strong> ${user.email}</div>
         <div><strong>Tarix:</strong> ${date}</div>
         <div><strong>Nəticə:</strong> <span id="carnetTotalDisplay">${score.points}/${score.maxPoints} (${score.percent}%)</span></div>
       </div>
-      
       <div style="background:linear-gradient(135deg,#1a1a2e,#2d2d4e);color:#fff;padding:24px;border-radius:12px;text-align:center;margin-bottom:24px">
         <div style="font-size:14px;opacity:0.8;margin-bottom:8px">Yekun Nəticə</div>
         <div id="carnetGradeBadge" style="display:inline-block;padding:16px 32px;border-radius:12px;font-size:28px;font-weight:900;background:#dc2626;color:#fff">${score.points}/${score.maxPoints} (${score.percent}%)</div>
       </div>
-      
       <table style="width:100%;border-collapse:collapse" id="carnetTable">
         <thead>
           <tr>
@@ -1020,78 +1002,48 @@ function viewCarnetFromAdmin(email, examId){
       <td style="padding:12px;border-bottom:1px solid #e5e7eb">${r.answer}</td>
       <td style="padding:12px;border-bottom:1px solid #e5e7eb">${r.correct ? '✅ Düzgün' : '❌ Səhv'}</td>
       <td style="padding:12px;border-bottom:1px solid #e5e7eb">`;
-    
     if(canEdit){
-      html += `<input type="number" class="marker-score-input" 
-        data-idx="${idx}" data-email="${email}" data-exam="${examId}" 
-        value="${r.earned}" min="0" max="${maxPt}" step="0.5" 
-        style="width:70px;padding:6px;border:2px solid #e5e7eb;border-radius:6px;text-align:center;font-weight:700"
-        onchange="window.opener.updateReviewScore(this)">
-        <span style="font-size:11px;color:#666">/${maxPt}</span>`;
+      html += `<input type="number" class="marker-score-input" data-idx="${idx}" data-email="${email}" data-exam="${examId}" value="${r.earned}" min="0" max="${maxPt}" step="0.5" style="width:70px;padding:6px;border:2px solid #e5e7eb;border-radius:6px;text-align:center;font-weight:700" onchange="window.opener.updateReviewScore(this)"><span style="font-size:11px;color:#666">/${maxPt}</span>`;
     } else {
       html += `<strong>${r.earned}/${r.points}</strong>`;
     }
-    
     html += `</td></tr>`;
   });
-  
   html += `</tbody></table>`;
   
   if(canEdit){
     html += `<div style="margin-top:20px;text-align:center">
-      <button onclick="window.opener.recalculateAndSaveScore('${email}','${examId}')" 
-        style="padding:14px 32px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">
-        💾 Balları Yenilə və Yadda Saxla
-      </button>
+      <button onclick="window.opener.recalculateAndSaveScore('${email}','${examId}')" style="padding:14px 32px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">💾 Balları Yenilə və Yadda Saxla</button>
       <p style="font-size:12px;color:#666;margin-top:8px">⚠️ Diqqət: Bu əməliyyat şagirdin ümumi balını və qiymətini yeniləyəcək.</p>
     </div>`;
   }
-  
   html += `</div></div>`;
-  
   const w = window.open('', '_blank', 'width=900,height=800');
-  w.document.write(`<html><head><title>NƏTİCƏ VƏRƏQİ — ${user.name}</title>
-    <style>body{font-family:'Inter',sans-serif;padding:0;background:#f0f0eb}</style>
-    </head><body>${html}</body></html>`);
+  w.document.write(`<html><head><title>NƏTİCƏ VƏRƏQİ — ${user.name}</title><style>body{font-family:'Inter',sans-serif;padding:0;background:#f0f0eb}</style></head><body>${html}</body></html>`);
   w.document.close();
 }
 
-// Marker/Admin üçün sual balını real-time dəyişdirmə
 function updateReviewScore(input){
   const idx = parseInt(input.dataset.idx);
   const email = input.dataset.email;
   const examId = input.dataset.exam;
   const newScore = parseFloat(input.value) || 0;
-  
   const users = loadUsers();
   const user = users.find(u => u.email === email);
   if(!user || !user.scores?.[examId]) return;
-  
   const review = user.scores[examId].review;
   if(!review[idx]) return;
-  
   const maxPt = review[idx].points || 1;
-  if(newScore > maxPt){
-    alert(`Maksimum bal ${maxPt}-dir!`);
-    input.value = review[idx].earned;
-    return;
-  }
-  if(newScore < 0){
-    alert(`Bal mənfi ola bilməz!`);
-    input.value = review[idx].earned;
-    return;
-  }
-  
+  if(newScore > maxPt){ alert(`Maksimum bal ${maxPt}-dir!`); input.value = review[idx].earned; return; }
+  if(newScore < 0){ alert(`Bal mənfi ola bilməz!`); input.value = review[idx].earned; return; }
   review[idx].earned = newScore;
   review[idx].correct = (newScore === maxPt);
-  
   const row = input.closest('tr');
   if(row){
     row.style.background = review[idx].correct ? '#dcfce7' : '#fee2e2';
     const statusCell = row.cells[4];
     if(statusCell) statusCell.textContent = review[idx].correct ? '✅ Düzgün' : '❌ Səhv';
   }
-  
   user.scores[examId].review = review;
   saveUsers(users);
 }
@@ -1100,14 +1052,11 @@ function updateReviewScore(input){
 function recalculateAndSaveScore(email, examId){
   const users = loadUsers();
   const user = users.find(u => u.email === email);
-  if(!user || !user.scores?.[examId]) return;
+  if(!user || !user.scores?.[examId]){ alert('❌ Xəta: İstifadəçi və ya nəticə tapılmadı!'); return; }
   
   const score = user.scores[examId];
   const review = score.review;
-  
-  let totalEarned = 0;
-  let totalMax = 0;
-  let correctCount = 0;
+  let totalEarned = 0, totalMax = 0, correctCount = 0;
   
   review.forEach(r => {
     const maxPt = r.points || 1;
@@ -1138,13 +1087,11 @@ function recalculateAndSaveScore(email, examId){
   user.scores[examId] = score;
   saveUsers(users);
   
-  // Ana pəncərədəki göstəriciləri yenilə
   try {
     const openerDoc = window.opener?.document;
     if(openerDoc){
       const totalDisplay = openerDoc.getElementById('carnetTotalDisplay');
       if(totalDisplay) totalDisplay.textContent = `${totalEarned}/${totalMax} (${pct}%)`;
-      
       const gradeBadge = openerDoc.getElementById('carnetGradeBadge');
       if(gradeBadge){
         const colors = {5:'#16a34a', 4:'#2563eb', 3:'#fbbf24', 2:'#f97316', 1:'#dc2626'};
@@ -1152,19 +1099,12 @@ function recalculateAndSaveScore(email, examId){
         gradeBadge.style.color = grade === 3 ? '#1a1a2e' : '#fff';
         gradeBadge.textContent = `${totalEarned}/${totalMax} (${pct}%)`;
       }
-      
-      if(openerDoc.getElementById('adminResults')?.classList.contains('active')){
-        openerDoc.renderStudentResultsList();
-      }
-      if(openerDoc.getElementById('markerDashboard')?.classList.contains('active') || openerDoc.getElementById('markerStudentList')){
-        openerDoc.renderMarkerStudentList();
-        openerDoc.renderMarkerStats();
-      }
+      if(openerDoc.getElementById('adminResults')?.classList.contains('active')) openerDoc.renderStudentResultsList();
+      if(openerDoc.getElementById('markerStudentList')){ openerDoc.renderMarkerStudentList(); openerDoc.renderMarkerStats(); }
     }
   } catch(e){ console.error('UI yeniləmə xətası:', e); }
   
-  // ✅ YENİ: Uğurlu yadda saxlama mesajı
-  alert(`✅ Nəticə uğurla yeniləndi və yadda saxlanıldı!\n\nYeni bal: ${totalEarned}/${totalMax} (${pct}%)\nQiymət: ${grade} (${gradeText})`);
+  alert(`✅ Yaddaşa verildi!\n\nYeni bal: ${totalEarned}/${totalMax} (${pct}%)\nQiymət: ${grade} (${gradeText})`);
 }
 
 // Marker Functions
@@ -1177,28 +1117,19 @@ function renderMarkerUserSelect(){
 function makeMarker(){
   const email = document.getElementById('markerUserSelect').value;
   if(!email){ alert('Zəhmət olmasa şagird seçin'); return; }
-  
   const users = loadUsers();
   const idx = users.findIndex(u=>u.email===email);
   if(idx===-1){ alert('İstifadəçi tapılmadı'); return; }
-  
   users[idx].role = 'marker';
   saveUsers(users);
   alert(`✅ ${users[idx].name} marker təyin olundu!`);
-  renderMarkerUserSelect();
-  renderMarkersList();
-  renderAdminUsers();
+  renderMarkerUserSelect(); renderMarkersList(); renderAdminUsers();
 }
 
 function renderMarkersList(){
   const container = document.getElementById('markersList');
   const markers = loadUsers().filter(u=>u.role==='marker');
-  
-  if(markers.length===0){
-    container.innerHTML = '<div class="no-data">Heç bir marker yoxdur</div>';
-    return;
-  }
-  
+  if(markers.length===0){ container.innerHTML = '<div class="no-data">Heç bir marker yoxdur</div>'; return; }
   let html = '<h4 style="margin-bottom:12px">Aktiv Markerlər:</h4><div style="display:grid;gap:8px">';
   markers.forEach(m=>{
     html += `<div style="background:#fef3c7;padding:12px;border-radius:8px;display:flex;justify-content:space-between;align-items:center"><span><strong>${m.name}</strong> <span style="font-size:12px;color:#666">(${m.email})</span></span><button class="btn-sm btn-del" onclick="removeMarker('${m.email}')">Markerlikdən Çıxar</button></div>`;
@@ -1214,9 +1145,7 @@ function removeMarker(email){
   if(idx===-1) return;
   users[idx].role = 'student';
   saveUsers(users);
-  renderMarkersList();
-  renderMarkerUserSelect();
-  renderAdminUsers();
+  renderMarkersList(); renderMarkerUserSelect(); renderAdminUsers();
 }
 
 // ==================== INIT ====================
