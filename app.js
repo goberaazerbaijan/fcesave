@@ -32,10 +32,7 @@ function refreshCurrentUser(){
   if(!currentUser) return;
   const users = loadUsers();
   const fresh = users.find(u => u.email === currentUser.email);
-  if(fresh){
-    currentUser = fresh;
-    localStorage.setItem('fce_current', JSON.stringify(fresh));
-  }
+  if(fresh){ currentUser = fresh; localStorage.setItem('fce_current', JSON.stringify(fresh)); }
 }
 
 function initDB(){
@@ -71,10 +68,7 @@ function saveCurrentUser(){
   localStorage.setItem('fce_current', JSON.stringify(currentUser));
   const users = loadUsers();
   const idx = users.findIndex(u => u.email === currentUser.email);
-  if(idx >= 0){
-    users[idx] = currentUser;
-    saveUsers(users);
-  }
+  if(idx >= 0){ users[idx] = currentUser; saveUsers(users); }
 }
 
 // ==================== AUTH ====================
@@ -96,9 +90,7 @@ function doLogin(){
   const users = loadUsers();
   const user = users.find(u=>u.email===email && u.password===pass);
   if(!user){ showAuthError('Email və ya parol yanlışdır'); return; }
-  currentUser = user;
-  saveCurrentUser();
-  enterApp();
+  currentUser = user; saveCurrentUser(); enterApp();
 }
 
 function doRegister(){
@@ -111,8 +103,7 @@ function doRegister(){
   const users = loadUsers();
   if(users.find(u=>u.email===email)){ showAuthError('Bu email artıq qeydiyyatdan keçib'); return; }
   const newUser = {name,email,password:pass,role:'student',createdAt:Date.now(),answers:{},scores:{}};
-  users.push(newUser);
-  saveUsers(users);
+  users.push(newUser); saveUsers(users);
   showAuthSuccess('Qeydiyyat uğurlu! İndi giriş edin.');
   setTimeout(()=>{ document.querySelectorAll('.auth-tab')[0].click(); document.getElementById('loginEmail').value = email; },1000);
 }
@@ -132,7 +123,6 @@ function enterApp(){
   document.getElementById('authPage').classList.add('hidden');
   document.getElementById('mainApp').classList.remove('hidden');
   document.getElementById('userDisplay').textContent = `${currentUser.name} (${currentUser.role==='admin'?'Admin':currentUser.role==='marker'?'Marker':'Şagird'})`;
-  
   if(currentUser.role==='admin') showAdmin();
   else if(currentUser.role==='marker') showMarkerDashboard();
   else showExamList();
@@ -146,7 +136,6 @@ function showMarkerDashboard(){
   document.getElementById('adminPage').classList.add('hidden');
   document.getElementById('markerDashboard').classList.remove('hidden');
   hideExamNavButtons();
-  
   document.getElementById('markerName').textContent = currentUser.name;
   renderMarkerStats();
   renderMarkerStudentList();
@@ -157,30 +146,16 @@ function renderMarkerStats(){
   const allUsers = loadUsers();
   const students = allUsers.filter(u => u.role === 'student');
   const totalStudents = students.length;
-  
-  let totalExams = 0;
-  let totalEdited = 0;
+  let totalExams = 0, totalEdited = 0;
   students.forEach(u => {
     const scores = u.scores || {};
     totalExams += Object.keys(scores).length;
-    Object.values(scores).forEach(s => {
-      if(s.markerEdited) totalEdited++;
-    });
+    Object.values(scores).forEach(s => { if(s.markerEdited) totalEdited++; });
   });
-  
   container.innerHTML = `
-    <div class="marker-stat-card">
-      <div class="stat-label">👥 Şagird Sayı</div>
-      <div class="stat-value">${totalStudents}</div>
-    </div>
-    <div class="marker-stat-card">
-      <div class="stat-label">📝 Tamamlanan İmtahan</div>
-      <div class="stat-value">${totalExams}</div>
-    </div>
-    <div class="marker-stat-card">
-      <div class="stat-label">✏️ Redaktə Edilmiş</div>
-      <div class="stat-value">${totalEdited}</div>
-    </div>
+    <div class="marker-stat-card"><div class="stat-label">👥 Şagird Sayı</div><div class="stat-value">${totalStudents}</div></div>
+    <div class="marker-stat-card"><div class="stat-label">📝 Tamamlanan İmtahan</div><div class="stat-value">${totalExams}</div></div>
+    <div class="marker-stat-card"><div class="stat-label">✏️ Redaktə Edilmiş</div><div class="stat-value">${totalEdited}</div></div>
   `;
 }
 
@@ -188,28 +163,16 @@ function renderMarkerStudentList(){
   const container = document.getElementById('markerStudentList');
   const allUsers = loadUsers();
   const students = allUsers.filter(u => u.role === 'student');
-  
-  if(students.length === 0){
-    container.innerHTML = '<div class="no-data">Heç bir şagird yoxdur</div>';
-    return;
-  }
-  
+  if(students.length === 0){ container.innerHTML = '<div class="no-data">Heç bir şagird yoxdur</div>'; return; }
   let html = '';
   students.forEach(user => {
     const scores = user.scores || {};
     const examIds = Object.keys(scores);
     const totalPoints = examIds.reduce((sum, eid) => sum + (scores[eid].points || 0), 0);
     const maxPoints = examIds.reduce((sum, eid) => sum + (scores[eid].maxPoints || 0), 0);
-    
     html += `<div class="marker-student-item">
-      <div class="student-header">
-        <div class="student-name">${user.name}</div>
-        <div class="student-email">${user.email}</div>
-      </div>
-      <div class="student-info">
-        Tamamlanan imtahan: ${examIds.length} • Ümumi bal: <strong>${totalPoints}/${maxPoints}</strong>
-      </div>`;
-    
+      <div class="student-header"><div class="student-name">${user.name}</div><div class="student-email">${user.email}</div></div>
+      <div class="student-info">Tamamlanan imtahan: ${examIds.length} • Ümumi bal: <strong>${totalPoints}/${maxPoints}</strong></div>`;
     if(examIds.length > 0){
       html += `<div style="margin-top:10px">`;
       examIds.forEach(eid => {
@@ -221,7 +184,6 @@ function renderMarkerStudentList(){
     } else {
       html += `<div style="margin-top:10px;font-size:13px;color:#9ca3af;font-style:italic">Hələ nəticə yoxdur</div>`;
     }
-    
     html += `</div>`;
   });
   container.innerHTML = html;
@@ -231,13 +193,7 @@ function renderMarkerStudentList(){
 function renderExamNavButtons(){
   const container = document.getElementById('examNavButtons');
   if(!container) return;
-  
-  if(!currentExamId || !EXAMS[currentExamId]){
-    container.innerHTML = '';
-    container.classList.remove('show');
-    return;
-  }
-  
+  if(!currentExamId || !EXAMS[currentExamId]){ container.innerHTML = ''; container.classList.remove('show'); return; }
   let html = '';
   EXAMS[currentExamId].parts.forEach((pid, idx) => {
     const m = MODULES[pid];
@@ -245,46 +201,31 @@ function renderExamNavButtons(){
     html += `<button class="part-nav-btn ${isActive ? 'active' : ''}" onclick="goToPart('${pid}')">Part ${m.moduleNum}</button>`;
   });
   html += `<button class="result-nav-btn" onclick="showCarnetFromCurrent()">📜 Nəticəyə bax</button>`;
-  
   container.innerHTML = html;
   container.classList.add('show');
 }
 
 function hideExamNavButtons(){
   const container = document.getElementById('examNavButtons');
-  if(container){
-    container.innerHTML = '';
-    container.classList.remove('show');
-  }
+  if(container){ container.innerHTML = ''; container.classList.remove('show'); }
 }
 
 function goToPart(pid){
   if(!currentExamId || !EXAMS[currentExamId]) return;
   if(!EXAMS[currentExamId].parts.includes(pid)) return;
   if(pid === currentModuleId) return;
-  
-  currentModuleId = pid;
-  currentQ = 0;
-  renderLayout();
-  renderText();
-  renderQuestion();
-  renderExamNavButtons();
+  currentModuleId = pid; currentQ = 0;
+  renderLayout(); renderText(); renderQuestion(); renderExamNavButtons();
 }
 
 function showCarnetFromCurrent(){
   refreshCurrentUser();
-  
-  if(!currentUser.scores || Object.keys(currentUser.scores).length === 0){
-    alert('Hələ nəticə yoxdur! İmtahanı tamamlayın.');
-    return;
-  }
-  
+  if(!currentUser.scores || Object.keys(currentUser.scores).length === 0){ alert('Hələ nəticə yoxdur! İmtahanı tamamlayın.'); return; }
   let examId = currentExamId;
   if(!examId || !currentUser.scores[examId]){
     const scoreKeys = Object.keys(currentUser.scores);
     examId = scoreKeys[scoreKeys.length - 1];
   }
-  
   currentExamId = examId;
   showCarnet();
 }
@@ -297,7 +238,6 @@ function showExamList(){
   document.getElementById('markerDashboard').classList.add('hidden');
   document.getElementById('examListPage').classList.remove('hidden');
   hideExamNavButtons();
-  
   const grid = document.getElementById('examGrid');
   grid.innerHTML = '';
   Object.values(EXAMS).forEach(exam=>{
@@ -365,7 +305,6 @@ function renderQuestionNumbers(){
   const items = mod.questions||mod.gaps||[];
   const container = document.getElementById('questionNumbers');
   if(!container) return;
-  
   let html = '<div class="q-numbers-grid">';
   items.forEach((item,idx)=>{
     const num = item.num;
@@ -380,10 +319,7 @@ function renderQuestionNumbers(){
   container.innerHTML = html;
 }
 
-function goToQuestion(idx){
-  currentQ = idx;
-  renderQuestion();
-}
+function goToQuestion(idx){ currentQ = idx; renderQuestion(); }
 
 function renderText(){
   const mod = getCurrentModule();
@@ -476,6 +412,7 @@ function renderText(){
   panel.innerHTML = html;
 }
 
+// ✅ DÜZƏLDİLMİŞ: Part 5-də sualın öz mətni göstərilir
 function renderQuestion(){
   const mod = getCurrentModule();
   const answers = getAnswers();
@@ -483,7 +420,9 @@ function renderQuestion(){
   if(currentModuleId==='part1'||currentModuleId==='part5'){
     const q = mod.questions[currentQ];
     const val = answers[q.num]||'';
-    let html = `<div class="q-card"><div class="q-card-header"><div class="q-number">${q.num}</div><div class="q-title">${currentModuleId==='part1'?'Boşluq üçün ən uyğun variantı seçin':'Ən uyğun cavabı seçin'}</div></div><ul class="q-options">`;
+    // Part 5 üçün sualın öz mətnini göstər, Part 1 üçün standart şərt
+    const titleText = currentModuleId==='part5' ? q.text : 'Boşluq üçün ən uyğun variantı seçin';
+    let html = `<div class="q-card"><div class="q-card-header"><div class="q-number">${q.num}</div><div class="q-title">${titleText}</div></div><ul class="q-options">`;
     Object.entries(q.options).forEach(([letter,text])=>{
       let cls = val===letter?'q-option selected':'q-option';
       html += `<li class="${cls}" onclick="selectOption('${letter}')"><div class="opt-radio"></div><span class="opt-letter">${letter}</span><span class="opt-text">${text}</span></li>`;
@@ -657,7 +596,6 @@ function continueToNext(){
 
 function normalizeAnswer(t){ return t?t.trim().toUpperCase().replace(/\s+/g,' '):''; }
 
-// ✅ DÜZƏLDİLMİŞ: earnedPoints düzgün hesablanır
 function showFinalResults(){
   const exam = EXAMS[currentExamId];
   const points = loadPoints()[currentExamId]||{};
@@ -680,7 +618,7 @@ function showFinalResults(){
       review.push({part:pid,num:it.num,userAns:answers[it.num]||'—',correct,answer:it.answer,points:pt,earned:correct?pt:0,given:it.given,personName:pid==='part7'?m.people[it.answer]?.name:null,explanation:it.explanation});
     });
     breakdown.push({label:`Part ${m.moduleNum}`,score:pCorrect,total:items.length,points:pEarned,maxPoints:items.reduce((s,it)=>s+(points[pid]?.[it.num]??1),0)});
-    earnedPoints += pEarned; // ✅ Hər partın balı ümumi bala əlavə olunur
+    earnedPoints += pEarned;
   });
 
   const pct = totalPoints>0?Math.round((earnedPoints/totalPoints)*100):0;
@@ -728,7 +666,6 @@ function showCarnet(){
   document.getElementById('examPage').classList.add('hidden');
   document.getElementById('carnetPage').classList.remove('hidden');
   hideExamNavButtons();
-  
   let examId = currentExamId;
   if(!examId || !currentUser.scores?.[examId]){
     const scoreKeys = Object.keys(currentUser.scores || {});
@@ -736,12 +673,10 @@ function showCarnet(){
   }
   if(!examId){ alert('Nəticə tapılmadı!'); backToExams(); return; }
   currentExamId = examId;
-  
   const score = currentUser.scores?.[examId];
   if(!score){ alert('Nəticə tapılmadı!'); backToExams(); return; }
   const exam = EXAMS[examId];
   const date = new Date(score.date).toLocaleString('az-AZ');
-  
   let html = `<div class="carnet-card"><div class="carnet-header"><div class="school">CAMBRIDGE FCE PLATFORM</div><h1>📜 NƏTİCƏ VƏRƏQİ</h1><div style="font-size:14px;color:#6b7280;margin-top:6px">${exam.title}</div></div><div class="carnet-student"><div><strong>Ad Soyad:</strong> ${currentUser.name}</div><div><strong>Email:</strong> ${currentUser.email}</div><div><strong>Tarix:</strong> ${date}</div></div><div class="carnet-total"><div class="total-label">Nəticə</div><div class="grade-badge grade-${score.grade}" style="font-size:24px">${score.points}/${score.maxPoints} (${score.percent}%)</div></div><table class="carnet-table"><thead><tr><th>Part</th><th>Sual</th><th>Cavab</th><th>Düzgün</th><th>Bal</th></tr></thead><tbody>`;
   score.review.forEach(r=>{ const m = MODULES[r.part]; html += `<tr class="${r.correct?'correct-row':'incorrect-row'}"><td>Part ${m.moduleNum}</td><td>${r.num}</td><td>${r.userAns||'—'}</td><td>${r.answer}</td><td><strong>${r.earned}/${r.points}</strong></td></tr>`; });
   html += `</tbody></table></div><div class="carnet-actions"><button class="btn-restart" onclick="backToExams()" onkeypress="if(event.key==='Enter')backToExams()">🏠 İmtahanlara Qayıt</button><button class="btn-carnet" onclick="window.print()" onkeypress="if(event.key==='Enter')window.print()">🖨️ Çap et</button></div>`;
@@ -1048,23 +983,19 @@ function updateReviewScore(input){
   saveUsers(users);
 }
 
-// ✅ DÜZƏLDİLMİŞ: Yadda saxlama mesajı əlavə edildi
 function recalculateAndSaveScore(email, examId){
   const users = loadUsers();
   const user = users.find(u => u.email === email);
   if(!user || !user.scores?.[examId]){ alert('❌ Xəta: İstifadəçi və ya nəticə tapılmadı!'); return; }
-  
   const score = user.scores[examId];
   const review = score.review;
   let totalEarned = 0, totalMax = 0, correctCount = 0;
-  
   review.forEach(r => {
     const maxPt = r.points || 1;
     totalMax += maxPt;
     totalEarned += (r.earned || 0);
     if(r.correct) correctCount++;
   });
-  
   const pct = totalMax > 0 ? Math.round((totalEarned / totalMax) * 100) : 0;
   let grade, gradeText;
   if(pct >= 90){ grade = 5; gradeText = 'Əla'; }
@@ -1072,7 +1003,6 @@ function recalculateAndSaveScore(email, examId){
   else if(pct >= 60){ grade = 3; gradeText = 'Orta'; }
   else if(pct >= 40){ grade = 2; gradeText = 'Qənaətbəxş'; }
   else { grade = 1; gradeText = 'Qeyri-qənaətbəxş'; }
-  
   score.points = totalEarned;
   score.maxPoints = totalMax;
   score.percent = pct;
@@ -1083,10 +1013,8 @@ function recalculateAndSaveScore(email, examId){
   score.markerEdited = true;
   score.markerEditedBy = currentUser?.name || 'Marker';
   score.markerEditedAt = Date.now();
-  
   user.scores[examId] = score;
   saveUsers(users);
-  
   try {
     const openerDoc = window.opener?.document;
     if(openerDoc){
@@ -1103,11 +1031,9 @@ function recalculateAndSaveScore(email, examId){
       if(openerDoc.getElementById('markerStudentList')){ openerDoc.renderMarkerStudentList(); openerDoc.renderMarkerStats(); }
     }
   } catch(e){ console.error('UI yeniləmə xətası:', e); }
-  
   alert(`✅ Yaddaşa verildi!\n\nYeni bal: ${totalEarned}/${totalMax} (${pct}%)\nQiymət: ${grade} (${gradeText})`);
 }
 
-// Marker Functions
 function renderMarkerUserSelect(){
   const sel = document.getElementById('markerUserSelect');
   sel.innerHTML = '<option value="">— Şagird seçin —</option>';
